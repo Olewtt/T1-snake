@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Snake</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+  #info { margin-bottom: 10px; font-size: 16px; }
+  canvas {
+    background: #222;
+    border: 3px solid #4ade80;
+  }
+  #hint { margin-top: 10px; font-size: 13px; color: #aaa; }
+</style>
+</head>
+<body>
+  <div id="info">Punkte: <span id="score">0</span></div>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div id="hint">Pfeiltasten zum Steuern</div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const GRID = 20; // Größe eines Feldes in Pixeln
+    const COLS = canvas.width / GRID;
+    const ROWS = canvas.height / GRID;
+
+    let snake, direction, nextDirection, food, score, running, speed, lastTime;
+
+    function resetGame() {
+      snake = [{ x: 8, y: 10 }, { x: 7, y: 10 }, { x: 6, y: 10 }];
+      direction = { x: 1, y: 0 };
+      nextDirection = direction;
+      score = 0;
+      running = true;
+      speed = 120; // ms pro Schritt
+      lastTime = 0;
+      placeFood();
+      scoreEl.textContent = '0';
+    }
+
+    function placeFood() {
+      food = {
+        x: Math.floor(Math.random() * COLS),
+        y: Math.floor(Math.random() * ROWS)
+      };
+      // Nicht auf der Schlange spawnen
+      if (snake.some(s => s.x === food.x && s.y === food.y)) placeFood();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!running && e.code === 'Space') { resetGame(); return; }
+      if (e.key === 'ArrowUp' && direction.y === 0) nextDirection = { x: 0, y: -1 };
+      if (e.key === 'ArrowDown' && direction.y === 0) nextDirection = { x: 0, y: 1 };
+      if (e.key === 'ArrowLeft' && direction.x === 0) nextDirection = { x: -1, y: 0 };
+      if (e.key === 'ArrowRight' && direction.x === 0) nextDirection = { x: 1, y: 0 };
+    });
+
+    function update() {
+      direction = nextDirection;
+      const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+      // Kollision mit Wand
+      if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) {
+        running = false;
+        return;
+      }
+      // Kollision mit sich selbst
+      if (snake.some(s => s.x === head.x && s.y === head.y)) {
+        running = false;
+        return;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        score++;
+        scoreEl.textContent = score;
+        placeFood();
+        if (speed > 50) speed -= 3; // wird mit der Zeit etwas schneller
+      } else {
+        snake.pop(); // Schwanz entfernen, wenn kein Essen gefressen wurde
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Essen
+      ctx.fillStyle = '#e94560';
+      ctx.fillRect(food.x * GRID, food.y * GRID, GRID - 2, GRID - 2);
+
+      // Schlange
+      snake.forEach((segment, i) => {
+        ctx.fillStyle = i === 0 ? '#4ade80' : '#22c55e';
+        ctx.fillRect(segment.x * GRID, segment.y * GRID, GRID - 2, GRID - 2);
+      });
+
+      if (!running) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 10);
+        ctx.font = '14px Arial';
+        ctx.fillText('Leertaste zum Neustart', canvas.width / 2, canvas.height / 2 + 20);
+      }
+    }
+
+    function loop(time) {
+      if (running) {
+        if (time - lastTime > speed) {
+          update();
+          lastTime = time;
+        }
+      }
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    resetGame();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
